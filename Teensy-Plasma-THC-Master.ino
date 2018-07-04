@@ -1,9 +1,3 @@
-
-
-//Todo
-//Remove use of analog pins for easier swapping between Uno and Teensy due to 3.3 limit on Teensy
-//For this reason it is a good idea to connect OUTPUT pins to other devices with 470Ω or 1k resistors, unless maximum current draw from the pins is required for a particular application. 
-
 //https://programmingelectronics.com/make-one-button-functionality-two-arduino/
 //https://github.com/mathertel/OneButton
 //http://www.mathertel.de/Arduino/OneButtonLibrary.aspx
