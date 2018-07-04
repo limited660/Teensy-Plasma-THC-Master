@@ -14,9 +14,8 @@ float mapfloat(float x, float in_min, float in_max, float out_min, float out_max
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-//Pin Setup, 0 for Uno, 1 for Teensy 3.1
-//Only works on Teensy 3.1 due to need for 5v
 //THC A-D Input must be on pin 5 on Uno or pin 13 on Teensy 3.1
+//OneButton pin need swapped if changing between Uno and Teensy
 
   //LCD Pins
   #define LCD_RS      12
