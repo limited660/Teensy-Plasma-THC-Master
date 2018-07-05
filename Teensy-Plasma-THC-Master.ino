@@ -1,4 +1,4 @@
-//https://programmingelectronics.com/make-one-button-functionality-two-arduino/
+
 //https://github.com/mathertel/OneButton
 //http://www.mathertel.de/Arduino/OneButtonLibrary.aspx
 
@@ -150,17 +150,6 @@ void loop() {
   currentMillis = millis(); //Grab current loop time, millis used to not delay code execution
   
   button.tick(); //Check button for input
-
-
-//  int MSB = digitalRead(encoderPinA); //MSB = most significant bit
-//  int LSB = digitalRead(encoderPinB); //LSB = least significant bit
-//  int encoded = (MSB << 1) |LSB; //converting the 2 pin value to single number
-//  int sum  = (lastEncoded << 2) | encoded; //adding it to the previous encoded value
-//  if(sum == 0b1101 || sum == 0b0010)EncoderValue ++;  
-//  if(sum == 0b1110 || sum == 0b0001)EncoderValue --;
-  
-
- 
 
   if (FreqCount.available()) {
     TorchVal = mapfloat(FreqCount.read(), 1197, 9265, 0.0, 10.0);
