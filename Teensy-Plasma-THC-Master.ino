@@ -34,8 +34,6 @@ float mapfloat(float x, float in_min, float in_max, float out_min, float out_max
   //New OneButton
   OneButton button(5,true);
 
-
-
 //LCD Pin Setup and Custom Character
 LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 uint8_t testChar[8] = {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff}; // Custom char
