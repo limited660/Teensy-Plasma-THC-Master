@@ -1,4 +1,3 @@
-
 //https://github.com/mathertel/OneButton
 //http://www.mathertel.de/Arduino/OneButtonLibrary.aspx
 
@@ -40,11 +39,11 @@ uint8_t testChar[8] = {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff}; // Custom char
 
 
 //Variable Setup
-int16_t last, value, testval, tipval, TargetVal, EncoderValue, TipEncoder, HysEncoder, TargetHys, PrevEncoder, PrevTorch;
+int16_t last, value, testval, tipval, TargetVal, EncoderValue, TipEncoder, HysEncoder, TargetHys, PrevEncoder;
 bool flash; //Bool value for flashing text on screen
 unsigned long startMillis, torchMillis, currentMillis, count, codeMillis, codeMillis2;  //some global variables available anywhere in the program
 long int frq;
-float TorchVal;
+float TorchVal, PrevTorch;
 int ButtonPress, tUp, tDown, tOff;
 
 
@@ -56,9 +55,9 @@ int TorchHysteresis; //Voltage offset from target before outputs activate
 
 void setup() {
 
-  FreqCount.begin(10);
+    FreqCount.begin(10);
 
-  Serial.begin(9600);
+    Serial.begin(9600);
 
   //Variable setup
     flash = false;
@@ -149,7 +148,7 @@ void setup() {
 
 void loop() {  
   
-	codeMillis = micros();;
+	//codeMillis = micros();
 
 	currentMillis = millis(); //Grab current loop time, millis used to not delay code execution
 
@@ -158,9 +157,9 @@ void loop() {
 	if (FreqCount.available()) {
 		TorchVal = mapfloat(FreqCount.read(), 1197, 9265, 0.0, 10.0);
 		TorchVal = TorchVal*50; 
-		if (currentMillis - torchMillis >= 250 && round(TorchVal) != PrevTorch) { //Delay printing of TorchVal to make it easier to read and dont print if same as previous value
+		if (currentMillis - torchMillis >= 250 && TorchVal != PrevTorch) { //Delay printing of TorchVal to make it easier to read and dont print if same as previous value
 			torchMillis = millis();
-			PrevTorch = round(TorchVal);
+			PrevTorch = TorchVal;
 			lcd.setCursor(13,0);
 			lcd.print("       ");
 			lcd.setCursor(13,0);
@@ -226,7 +225,7 @@ void loop() {
 			if(EncoderValue >= 15)EncoderValue = 15; //Don't let EncoderValue above 15
 			if(EncoderValue != PrevEncoder) {
 				lcd.setCursor(12, 2);
-				lcd.print("  ");
+				lcd.print("        ");
 				lcd.setCursor(12, 2);
 				lcd.print(EncoderValue);
 				PrevEncoder = EncoderValue;
@@ -234,7 +233,7 @@ void loop() {
 		} //End If
 		else if(EncoderValue != PrevEncoder) {
 			lcd.setCursor(12, 2);
-			lcd.print("  ");
+			lcd.print("        ");
 			lcd.setCursor(12, 2);
 			lcd.print(EncoderValue);
 			PrevEncoder = EncoderValue;
@@ -314,7 +313,7 @@ void loop() {
 
     codeMillis2 = micros();;
 
-    Serial.println(codeMillis2 - codeMillis);
+    //Serial.println(codeMillis2 - codeMillis);
 	
 }// Loop
 
