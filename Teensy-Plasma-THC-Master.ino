@@ -1,4 +1,3 @@
-//https://programmingelectronics.com/make-one-button-functionality-two-arduino/
 //https://github.com/mathertel/OneButton
 //http://www.mathertel.de/Arduino/OneButtonLibrary.aspx
 
@@ -34,8 +33,6 @@ float mapfloat(float x, float in_min, float in_max, float out_min, float out_max
   //New OneButton
   OneButton button(5,true);
 
-
-
 //LCD Pin Setup and Custom Character
 LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 uint8_t testChar[8] = {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff}; // Custom char
@@ -46,8 +43,8 @@ int16_t last, value, testval, tipval, TargetVal, EncoderValue, TipEncoder, HysEn
 bool flash; //Bool value for flashing text on screen
 unsigned long startMillis, torchMillis, currentMillis, count, codeMillis, codeMillis2;  //some global variables available anywhere in the program
 long int frq;
-float TorchVal;
-int ButtonPress;
+float TorchVal, PrevTorch;
+int ButtonPress, tUp, tDown, tOff;
 
 
 int lastEncoded;
@@ -58,14 +55,18 @@ int TorchHysteresis; //Voltage offset from target before outputs activate
 
 void setup() {
 
-  FreqCount.begin(10);
+    FreqCount.begin(10);
 
-  Serial.begin(9600);
+    Serial.begin(9600);
 
   //Variable setup
     flash = false;
     lastEncoded = 0;
     ButtonPress = 0;
+		tUp = 0; 
+		tDown = 0; 
+		tOff = 0; 
+
 
     TargetVal = EEPROM.read(0);
     TipEncoder = TargetVal;
@@ -114,6 +115,8 @@ void setup() {
   //LCD text setup
     lcd.setCursor(0, 0);
     lcd.print("Tip Voltage:");
+		lcd.setCursor(13,0);
+    lcd.print("-----");
     lcd.setCursor(0, 1);
     lcd.print("Tip Target:");
     lcd.setCursor(12, 1);
@@ -145,253 +148,255 @@ void setup() {
 
 void loop() {  
   
-  codeMillis = micros();;
+	//codeMillis = micros();
 
-  //Serial.print(ButtonPress);
+	currentMillis = millis(); //Grab current loop time, millis used to not delay code execution
 
-  currentMillis = millis(); //Grab current loop time, millis used to not delay code execution
-  
-  button.tick(); //Check button for input
+	button.tick(); //Check button for input
 
+	if (FreqCount.available()) {
+		TorchVal = mapfloat(FreqCount.read(), 1197, 9265, 0.0, 10.0);
+		TorchVal = TorchVal*50; 
+		if (currentMillis - torchMillis >= 250 && TorchVal != PrevTorch) { //Delay printing of TorchVal to make it easier to read and dont print if same as previous value
+			torchMillis = millis();
+			PrevTorch = TorchVal;
+			lcd.setCursor(13,0);
+			lcd.print("       ");
+			lcd.setCursor(13,0);
+			if (TorchVal <= 25){
+				lcd.print("-----");
+			} //End If
+			else{
+				lcd.print(TorchVal,1);
+			} //End Else
+		} //End If
+	} //End If
 
-//  int MSB = digitalRead(encoderPinA); //MSB = most significant bit
-//  int LSB = digitalRead(encoderPinB); //LSB = least significant bit
-//  int encoded = (MSB << 1) |LSB; //converting the 2 pin value to single number
-//  int sum  = (lastEncoded << 2) | encoded; //adding it to the previous encoded value
-//  if(sum == 0b1101 || sum == 0b0010)EncoderValue ++;  
-//  if(sum == 0b1110 || sum == 0b0001)EncoderValue --;
-  
+	if (ButtonPress == 1 || ButtonPress == 2) {
+		int MSB = digitalRead(encoderPinA); //MSB = most significant bit
+		int LSB = digitalRead(encoderPinB); //LSB = least significant bit
+		int encoded = (MSB << 1) |LSB; //converting the 2 pin value to single number
+		int sum  = (lastEncoded << 2) | encoded; //adding it to the previous encoded value
+		if(sum == 0b1101 || sum == 0b0010)EncoderValue ++;  
+		if(sum == 0b1110 || sum == 0b0001)EncoderValue --;
+		lastEncoded = encoded; //store this value for next time
+	} //End If
 
- 
+	if (ButtonPress == 1) {
 
-  if (FreqCount.available()) {
-    TorchVal = mapfloat(FreqCount.read(), 1197, 9265, 0.0, 10.0);
-    TorchVal = TorchVal*50; 
-  }
+		if(EncoderValue != TargetVal){
+			if(EncoderValue <= 100)EncoderValue = 100; //Don't let EncoderValue below 100
+			if(EncoderValue >= 150)EncoderValue = 150; //Don't let EncoderValue above 150
+			if(EncoderValue != PrevEncoder) {
+				lcd.setCursor(12, 1);
+				lcd.print("        ");
+				lcd.setCursor(12, 1);
+				lcd.print(EncoderValue);
+				PrevEncoder = EncoderValue;
+			} //End If
+		} //End If
+		else if(EncoderValue != PrevEncoder){
+			lcd.setCursor(12, 1);
+			lcd.print("        ");
+			lcd.setCursor(12, 1);
+			lcd.print(EncoderValue);
+			PrevEncoder = EncoderValue;
+		} //End Else If
 
-if (currentMillis - torchMillis >= 250) { //Delay printing of TorchVal to make it easier to read
-  torchMillis = millis();
-  lcd.setCursor(13,0);
-  lcd.print("       ");
+		//Begin code for flashing Tip Target text
+		if (currentMillis - startMillis >= 500 && flash) { //Hide Tip Target text
+			startMillis = millis();
+			lcd.setCursor(0, 1);
+			lcd.print("           ");
+			flash = false;
+		} //End If
+		else if(currentMillis - startMillis >= 300 && !flash) { //Show Tip Target text
+			startMillis = millis();
+			lcd.setCursor(0, 1);
+			lcd.print("Tip Target:");
+			flash = true;
+		} //End Else If
 
-  lcd.setCursor(13,0);
-  if (TorchVal <= 25){
-    lcd.print("-----");
-  }
-  else{
-    lcd.print(TorchVal,1);
-  }
-}
+	}
+	else if (ButtonPress ==2){
 
-if (ButtonPress == 1 || ButtonPress == 2) {
-  int MSB = digitalRead(encoderPinA); //MSB = most significant bit
-  int LSB = digitalRead(encoderPinB); //LSB = least significant bit
-  int encoded = (MSB << 1) |LSB; //converting the 2 pin value to single number
-  int sum  = (lastEncoded << 2) | encoded; //adding it to the previous encoded value
-  if(sum == 0b1101 || sum == 0b0010)EncoderValue ++;  
-  if(sum == 0b1110 || sum == 0b0001)EncoderValue --;
-  lastEncoded = encoded; //store this value for next time
-}
+		if(EncoderValue != TargetHys){
+			if(EncoderValue <= 0)EncoderValue = 0; //Don't let EncoderValue below 0
+			if(EncoderValue >= 15)EncoderValue = 15; //Don't let EncoderValue above 15
+			if(EncoderValue != PrevEncoder) {
+				lcd.setCursor(12, 2);
+				lcd.print("        ");
+				lcd.setCursor(12, 2);
+				lcd.print(EncoderValue);
+				PrevEncoder = EncoderValue;
+			} //End If
+		} //End If
+		else if(EncoderValue != PrevEncoder) {
+			lcd.setCursor(12, 2);
+			lcd.print("        ");
+			lcd.setCursor(12, 2);
+			lcd.print(EncoderValue);
+			PrevEncoder = EncoderValue;
+		} //End Else If
 
-if (ButtonPress == 1) {
-  
-    if(EncoderValue != TargetVal){
-      if(EncoderValue <= 100)EncoderValue = 100; //Don't let EncoderValue below 100
-      if(EncoderValue >= 150)EncoderValue = 150; //Don't let EncoderValue above 150
-      if(EncoderValue != PrevEncoder) {
-        lcd.setCursor(12, 1);
-        lcd.print("        ");
-        lcd.setCursor(12, 1);
-        lcd.print(EncoderValue);
-        PrevEncoder = EncoderValue;
-      }
-    }
-    else if(EncoderValue != PrevEncoder){
-      lcd.setCursor(12, 1);
-      lcd.print("        ");
-      lcd.setCursor(12, 1);
-      lcd.print(EncoderValue);
-      PrevEncoder = EncoderValue;
-    }
+		//Begin code for flashing Tip Target text
+		if (currentMillis - startMillis >= 500 && flash) { //Hide Tip Target text
+			startMillis = millis();
+			lcd.setCursor(0, 2);
+			lcd.print("           ");
+			flash = false;
+		} //End If
+		else if(currentMillis - startMillis >= 300 && !flash) { //Show Tip Target text
+			startMillis = millis();
+			lcd.setCursor(0, 2);
+			lcd.print("Hysteresis:");
+			flash = true;
+		} //End Else If
 
-    //Begin code for flashing Tip Target text
-    if (currentMillis - startMillis >= 500 && flash) { //Hide Tip Target text
-      startMillis = millis();
-      lcd.setCursor(0, 1);
-      lcd.print("           ");
-      flash = false;
-    }
-    else if(currentMillis - startMillis >= 300 && !flash) { //Show Tip Target text
-      startMillis = millis();
-      lcd.setCursor(0, 1);
-      lcd.print("Tip Target:");
-      flash = true;
-    }
+	}
 
-}
-else if (ButtonPress ==2){
-
-    if(EncoderValue != TargetHys){
-      if(EncoderValue <= 0)EncoderValue = 0; //Don't let EncoderValue below 0
-      if(EncoderValue >= 15)EncoderValue = 15; //Don't let EncoderValue above 15
-      if(EncoderValue != PrevEncoder) {
-        lcd.setCursor(12, 2);
-        lcd.print("  ");
-        lcd.setCursor(12, 2);
-        lcd.print(EncoderValue);
-        PrevEncoder = EncoderValue;
-      }
-    }
-    else if(EncoderValue != PrevEncoder) {
-      lcd.setCursor(12, 2);
-      lcd.print("  ");
-      lcd.setCursor(12, 2);
-      lcd.print(EncoderValue);
-      PrevEncoder = EncoderValue;
-    }
-  
-      //Begin code for flashing Tip Target text
-    if (currentMillis - startMillis >= 500 && flash) { //Hide Tip Target text
-      startMillis = millis();
-      lcd.setCursor(0, 2);
-      lcd.print("           ");
-      flash = false;
-    }
-    else if(currentMillis - startMillis >= 300 && !flash) { //Show Tip Target text
-      startMillis = millis();
-      lcd.setCursor(0, 2);
-      lcd.print("Hysteresis:");
-      flash = true;
-    }
-
-}
-
-//Code for moving torch based on tip value compared to requested value, add outputs here.
-  if(TorchVal < (TargetVal - TargetHys) && TorchVal >= 100){ //Voltage too low, raise torch
-    //Turn Down off, Up on
-      digitalWrite(10, LOW);       
-      digitalWrite(9, HIGH);       
-    //Print Square
-      lcd.setCursor(4,3);
-      lcd.print((char)0);
-    //Clear Other Squares
-      lcd.setCursor(12,3);
-      lcd.print(" ");
-      lcd.setCursor(19,3);
-      lcd.print(" ");
-  } //End If
-  else if(TorchVal > (TargetVal + TargetHys) && TorchVal <= 150){ //Voltage too high, lower torch
-    //Turn Up off, Down on
-      digitalWrite(9, LOW);       
-      digitalWrite(10, HIGH); 
-    //Print Square
-      lcd.setCursor(12,3);
-      lcd.print((char)0);
-    //Clear Other Squares
-      lcd.setCursor(19,3);
-      lcd.print(" ");
-      lcd.setCursor(4,3);
-      lcd.print(" ");
-  } //End Else If
-  else { //Voltage Stable - Outputs Off
-    //Turn both outputs off
-      digitalWrite(10, LOW);       
-      digitalWrite(9, LOW); 
-    //Print Square
-      lcd.setCursor(19,3);
-      lcd.print((char)0);
-    //Clear Other Squares
-      lcd.setCursor(4,3);
-      lcd.print(" ");
-      lcd.setCursor(12,3);
-      lcd.print(" ");
-  } //End Else
+	//Code for moving torch based on tip value compared to requested value, add outputs here.
+	if(TorchVal < (TargetVal - TargetHys) && TorchVal >= 100){ //Voltage too low, raise torch
+		//Turn Down off, Up on
+		digitalWrite(10, LOW);       
+		digitalWrite(9, HIGH);       
+		//Print Square
+		if(tUp != 1) { //Test if square has already been printed
+			tUp = 1; 
+			tDown = 0; 
+			tOff = 0; 
+			lcd.setCursor(4,3);
+			lcd.print((char)0);
+			//Clear Other Squares
+			lcd.setCursor(12,3);
+			lcd.print(" ");
+			lcd.setCursor(19,3);
+			lcd.print(" ");
+		} //End If
+	} //End If
+	else if(TorchVal > (TargetVal + TargetHys) && TorchVal <= 150){ //Voltage too high, lower torch
+		//Turn Up off, Down on
+		digitalWrite(9, LOW);       
+		digitalWrite(10, HIGH); 
+		//Print Square
+		if(tDown != 1) { //Test if square has already been printed
+			tUp = 0; 
+			tDown = 1; 
+			tOff = 0; 
+			lcd.setCursor(12,3);
+			lcd.print((char)0);
+			//Clear Other Squares
+			lcd.setCursor(19,3);
+			lcd.print(" ");
+			lcd.setCursor(4,3);
+			lcd.print(" ");
+		}
+	} //End Else If
+	else { //Voltage Stable - Outputs Off
+		//Turn both outputs off
+		digitalWrite(10, LOW);       
+		digitalWrite(9, LOW); 
+		//Print Square
+		if(tOff != 1) { //Test if square has already been printed
+			tUp = 0; 
+			tDown = 0; 
+			tOff = 1; 
+			lcd.setCursor(19,3);
+			lcd.print((char)0);
+			//Clear Other Squares
+			lcd.setCursor(4,3);
+			lcd.print(" ");
+			lcd.setCursor(12,3);
+			lcd.print(" ");
+		}
+	} //End Else
 
     codeMillis2 = micros();;
 
-    Serial.println(codeMillis2 - codeMillis);
+    //Serial.println(codeMillis2 - codeMillis);
+	
 }// Loop
 
   
 void ClickFunction() { //Runs on single click of encoder button
-  if(ButtonPress == 3)ButtonPress = 0; //Loop back around
+	if(ButtonPress == 3)ButtonPress = 0; //Loop back around
 
-  if(ButtonPress == 1){
-    if(EncoderValue != TargetVal){//Encoder was changed, 
-      TargetVal = EncoderValue;
-      TipEncoder = EncoderValue;
-      ButtonPress = -1;
-      lcd.setCursor(12, 1);
-      lcd.print(TargetVal);
-    }
-    else {
-      Serial.print("HysEncoder Set: ");
-      Serial.println(HysEncoder);
-      EncoderValue = HysEncoder; //Swap to HysEncoder so it is ready for next button press
-      lcd.setCursor(12, 1);
-      lcd.print("        ");
-      lcd.setCursor(12, 1);
-      lcd.print(TargetVal);
-    }
-  }
+	if(ButtonPress == 1){
+		if(EncoderValue != TargetVal){//Encoder was changed, 
+			TargetVal = EncoderValue;
+			TipEncoder = EncoderValue;
+			ButtonPress = -1;
+			lcd.setCursor(12, 1);
+			lcd.print(TargetVal);
+		}
+		else {
+			Serial.print("HysEncoder Set: ");
+			Serial.println(HysEncoder);
+			EncoderValue = HysEncoder; //Swap to HysEncoder so it is ready for next button press
+			lcd.setCursor(12, 1);
+			lcd.print("        ");
+			lcd.setCursor(12, 1);
+			lcd.print(TargetVal);
+		}
+	}
 
-  if(ButtonPress == 2){   
-    if(EncoderValue != TargetHys){
-      TargetHys = EncoderValue;
-      HysEncoder = EncoderValue;
-      ButtonPress = -1;
-      lcd.setCursor(12, 2);
-      lcd.print(TargetHys);
-    }
-    else {
-      lcd.setCursor(12, 2);
-      lcd.print("        ");
-      lcd.setCursor(12, 2);
-      lcd.print(TargetHys);
-    }
-    EncoderValue = TipEncoder;
-  }
-  //Write back to LCD in case lines were blank when exiting flashing statement
-  lcd.setCursor(0, 1);
-  lcd.print("Tip Target:");
-  lcd.setCursor(0, 2);
-  lcd.print("Hysteresis:");
-  ButtonPress++;
+	if(ButtonPress == 2){   
+		if(EncoderValue != TargetHys){
+			TargetHys = EncoderValue;
+			HysEncoder = EncoderValue;
+			ButtonPress = -1;
+			lcd.setCursor(12, 2);
+			lcd.print(TargetHys);
+		}
+		else {
+			lcd.setCursor(12, 2);
+			lcd.print("        ");
+			lcd.setCursor(12, 2);
+			lcd.print(TargetHys);
+		}
+		EncoderValue = TipEncoder;
+	}
+	//Write back to LCD in case lines were blank when exiting flashing statement
+	lcd.setCursor(0, 1);
+	lcd.print("Tip Target:");
+	lcd.setCursor(0, 2);
+	lcd.print("Hysteresis:");
+	ButtonPress++;
 }
 
 void DoubleClickFunction() { //Runs on double click of encoder button
-  if(ButtonPress == 1) {
-    EncoderValue = EEPROM.read(0);
-    lcd.setCursor(12, 1);
-    lcd.print("        ");
-    lcd.setCursor(12, 1);
-    lcd.print(EncoderValue);
-  }
-  if(ButtonPress == 2) {
-    EncoderValue = EEPROM.read(1);
-    lcd.setCursor(12, 2);
-    lcd.print("  ");
-    lcd.setCursor(12, 2);
-    lcd.print(EncoderValue);
-  }
+	if(ButtonPress == 1) {
+		EncoderValue = EEPROM.read(0);
+		lcd.setCursor(12, 1);
+		lcd.print("        ");
+		lcd.setCursor(12, 1);
+		lcd.print(EncoderValue);
+	}
+	if(ButtonPress == 2) {
+		EncoderValue = EEPROM.read(1);
+		lcd.setCursor(12, 2);
+		lcd.print("        ");
+		lcd.setCursor(12, 2);
+		lcd.print(EncoderValue);
+	}
 }
 
 void HoldFunction() { //Runs on hold of encoder button
-  if(ButtonPress == 1) {
-    EEPROM.write(0,0); //Clear EEPROM before write, maybe unnecessary
-    EEPROM.write(0, TargetVal); //Write current TargetVal to EEPROM 0
-    lcd.setCursor(12, 1);
-    lcd.print("        ");
-    lcd.setCursor(12, 1);
-    lcd.print("SAVED");
-  }
-  if(ButtonPress == 2) {
-    EEPROM.write(1,0); //Clear EEPROM before write, maybe unnecessary
-    EEPROM.write(1, TargetHys); //Write current TargetVal to EEPROM 0
-    lcd.setCursor(12, 2);
-    lcd.print("        ");
-    lcd.setCursor(12, 2);
-    lcd.print("SAVED");
-  }
+	if(ButtonPress == 1) {
+		EEPROM.write(0,0); //Clear EEPROM before write, maybe unnecessary
+		EEPROM.write(0, TargetVal); //Write current TargetVal to EEPROM 0
+		lcd.setCursor(12, 1);
+		lcd.print("        ");
+		lcd.setCursor(12, 1);
+		lcd.print("SAVED");
+	}
+	if(ButtonPress == 2) {
+		EEPROM.write(1,0); //Clear EEPROM before write, maybe unnecessary
+		EEPROM.write(1, TargetHys); //Write current TargetVal to EEPROM 0
+		lcd.setCursor(12, 2);
+		lcd.print("        ");
+		lcd.setCursor(12, 2);
+		lcd.print("SAVED");
+	}
 }
 
