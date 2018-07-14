@@ -1,5 +1,20 @@
 # Teensy Plasma THC Master
 
-Updating code to only print to LCD when value is different.
+Loop
+- <10 microsecond loop time
 
-Doing so in output section changes loop speed from ~1280 microseconds to ~8 microseconds.
+Screen
+- RepRap Smart Controller (4x20 with Push Button Encoder)
+
+Button
+- One Press = Swap between Tip Target/Hysteresis & save value if changed
+- Double Press = Recalls highlighted value from EEPROM
+- Hold = Saves highlighted value to EEPROM, this value is restored on power up and using Double Press
+
+Encoder
+- Change highlighted value
+
+Frequency Counter
+- THCAD should be set to F/1
+- Gate interval of 10 milliseconds
+- Change mapfloat in Loop to match numbers provided on THCAD
