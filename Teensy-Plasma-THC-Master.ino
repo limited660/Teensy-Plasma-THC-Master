@@ -40,13 +40,13 @@ uint8_t testChar[8] = {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff}; // Custom char
 
 //Variable Setup
 int16_t TargetVal, EncoderValue, TipEncoder, HysEncoder, TargetHys, PrevEncoder;
-bool flash;
+bool flash, thcStatus;
 unsigned long startMillis, torchMillis, currentMillis;
 float TorchVal, PrevTorch;
 int ButtonPress, tUp, tDown, tOff, minVolt, maxVolt, lastEncoded;
 
 void setup() {
-  
+
   FreqCount.begin(10);
   
   //Variable setup
@@ -64,6 +64,8 @@ void setup() {
   TipEncoder = TargetVal;
   TargetHys = EEPROM.read(1);
   HysEncoder = TargetHys;
+
+  thcStatus = EEPROM.read(2);
   
   EncoderValue = TipEncoder; //Start with TipEncoder since it is first in button statement
   
@@ -110,13 +112,25 @@ void setup() {
   lcd.setCursor(13,0);
   lcd.print("-----");
   lcd.setCursor(0, 1);
-  lcd.print("Tip Target:");
-  lcd.setCursor(12, 1);
-  lcd.print(TargetVal); //Write initial TargetVal, updated by button press
+  lcd.print("Tip Target:"); 
   lcd.setCursor(0, 2);
   lcd.print("Hysteresis:");
-  lcd.setCursor(12, 2);
-  lcd.print(TargetHys); //Write initial TargetHys, updated by button press
+  if(thcStatus){
+    lcd.setCursor(12, 1);
+    lcd.print(TargetVal); //Write initial TargetVal, updated by button press
+    lcd.setCursor(12, 2);
+    lcd.print(TargetHys); //Write initial TargetHys, updated by button press
+  }
+  else {
+    lcd.setCursor(12, 1);
+    lcd.print("        ");
+    lcd.setCursor(12, 2);
+    lcd.print("        ");
+    lcd.setCursor(12, 1);
+    lcd.print("DISABLED");
+    lcd.setCursor(12, 2);
+    lcd.print("DISABLED");
+  }
   lcd.setCursor(0,3);
   lcd.print("UP:");
   lcd.setCursor(6,3);
@@ -139,7 +153,7 @@ void setup() {
 }//Setup
 
 void loop() {  
-  
+
   currentMillis = millis(); //Grab current loop time, millis used to not delay code execution
   
   button.tick(); //Check button for input
@@ -246,7 +260,7 @@ void loop() {
   } //End Else If
   
   //Code for moving torch based on tip value compared to requested value, add outputs here.
-  if(TorchVal < (TargetVal - TargetHys) && TorchVal >= minVolt){ //Voltage too low, raise torch
+  if(TorchVal < (TargetVal - TargetHys) && TorchVal >= minVolt && thcStatus){ //Voltage too low, raise torch
     //Turn Down off, Up on
     digitalWrite(10, LOW);       
     digitalWrite(9, HIGH);       
@@ -264,7 +278,7 @@ void loop() {
       lcd.print(" ");
     } //End If
   } //End If
-  else if(TorchVal > (TargetVal + TargetHys) && TorchVal <= maxVolt){ //Voltage too high, lower torch
+  else if(TorchVal > (TargetVal + TargetHys) && TorchVal <= maxVolt && thcStatus){ //Voltage too high, lower torch
     //Turn Up off, Down on
     digitalWrite(9, LOW);       
     digitalWrite(10, HIGH); 
@@ -305,47 +319,49 @@ void loop() {
 
   
 void ClickFunction() { //Runs on single click of encoder button
-  if(ButtonPress == 3)ButtonPress = 0; //Loop back around
-  
-  if(ButtonPress == 1){
-    if(EncoderValue != TargetVal){//Encoder was changed, 
-      TargetVal = EncoderValue;
-      TipEncoder = EncoderValue;
-      ButtonPress = -1;
-      lcd.setCursor(12, 1);
-      lcd.print(TargetVal);
+  if(thcStatus){
+    if(ButtonPress == 3)ButtonPress = 0; //Loop back around
+    
+    if(ButtonPress == 1){
+      if(EncoderValue != TargetVal){//Encoder was changed, 
+        TargetVal = EncoderValue;
+        TipEncoder = EncoderValue;
+        ButtonPress = -1;
+        lcd.setCursor(12, 1);
+        lcd.print(TargetVal);
+      }
+      else {
+        EncoderValue = HysEncoder; //Swap to HysEncoder so it is ready for next button press
+        lcd.setCursor(12, 1);
+        lcd.print("        ");
+        lcd.setCursor(12, 1);
+        lcd.print(TargetVal);
+      }
     }
-    else {
-      EncoderValue = HysEncoder; //Swap to HysEncoder so it is ready for next button press
-      lcd.setCursor(12, 1);
-      lcd.print("        ");
-      lcd.setCursor(12, 1);
-      lcd.print(TargetVal);
+    
+    if(ButtonPress == 2){   
+      if(EncoderValue != TargetHys){
+        TargetHys = EncoderValue;
+        HysEncoder = EncoderValue;
+        ButtonPress = -1;
+        lcd.setCursor(12, 2);
+        lcd.print(TargetHys);
+      }
+      else {
+        lcd.setCursor(12, 2);
+        lcd.print("        ");
+        lcd.setCursor(12, 2);
+        lcd.print(TargetHys);
+      }
+      EncoderValue = TipEncoder;
     }
+    //Write back to LCD in case lines were blank when exiting flashing statement
+    lcd.setCursor(0, 1);
+    lcd.print("Tip Target:");
+    lcd.setCursor(0, 2);
+    lcd.print("Hysteresis:");
+    ButtonPress++;
   }
-  
-  if(ButtonPress == 2){   
-    if(EncoderValue != TargetHys){
-      TargetHys = EncoderValue;
-      HysEncoder = EncoderValue;
-      ButtonPress = -1;
-      lcd.setCursor(12, 2);
-      lcd.print(TargetHys);
-    }
-    else {
-      lcd.setCursor(12, 2);
-      lcd.print("        ");
-      lcd.setCursor(12, 2);
-      lcd.print(TargetHys);
-    }
-    EncoderValue = TipEncoder;
-  }
-  //Write back to LCD in case lines were blank when exiting flashing statement
-  lcd.setCursor(0, 1);
-  lcd.print("Tip Target:");
-  lcd.setCursor(0, 2);
-  lcd.print("Hysteresis:");
-  ButtonPress++;
 }
 
 void DoubleClickFunction() { //Runs on double click of encoder button
@@ -367,20 +383,44 @@ void DoubleClickFunction() { //Runs on double click of encoder button
 
 void HoldFunction() { //Runs on hold of encoder button
   if(ButtonPress == 1) {
-    EEPROM.write(0,0); //Clear EEPROM before write, maybe unnecessary
     EEPROM.write(0, TargetVal); //Write current TargetVal to EEPROM 0
     lcd.setCursor(12, 1);
     lcd.print("        ");
     lcd.setCursor(12, 1);
     lcd.print("SAVED");
   }
-  if(ButtonPress == 2) {
-    EEPROM.write(1,0); //Clear EEPROM before write, maybe unnecessary
-    EEPROM.write(1, TargetHys); //Write current TargetVal to EEPROM 0
+  else if(ButtonPress == 2) {
+    EEPROM.write(1, TargetHys); //Write current TargetHys to EEPROM 1
     lcd.setCursor(12, 2);
     lcd.print("        ");
     lcd.setCursor(12, 2);
     lcd.print("SAVED");
+  }
+  else {
+    if (thcStatus) {
+      thcStatus = false;
+      lcd.setCursor(12, 1);
+      lcd.print("        ");
+      lcd.setCursor(12, 2);
+      lcd.print("        ");
+      lcd.setCursor(12, 1);
+      lcd.print("DISABLED");
+      lcd.setCursor(12, 2);
+      lcd.print("DISABLED");
+      EEPROM.write(2, thcStatus); //Write current thcStatus to EEPROM 2
+    }
+    else{
+      thcStatus = true;
+      lcd.setCursor(12, 1);
+      lcd.print("        ");
+      lcd.setCursor(12, 2);
+      lcd.print("        ");
+      lcd.setCursor(12, 1);
+      lcd.print(TargetVal);
+      lcd.setCursor(12, 2);
+      lcd.print(TargetHys);
+      EEPROM.write(2, thcStatus); //Write current thcStatus to EEPROM 2
+    }
   }
 }
 
