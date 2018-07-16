@@ -328,6 +328,8 @@ void ClickFunction() { //Runs on single click of encoder button
         TipEncoder = EncoderValue;
         ButtonPress = -1;
         lcd.setCursor(12, 1);
+        lcd.print("        ");
+        lcd.setCursor(12, 1);
         lcd.print(TargetVal);
       }
       else {
@@ -344,6 +346,8 @@ void ClickFunction() { //Runs on single click of encoder button
         TargetHys = EncoderValue;
         HysEncoder = EncoderValue;
         ButtonPress = -1;
+        lcd.setCursor(12, 2);
+        lcd.print("        ");
         lcd.setCursor(12, 2);
         lcd.print(TargetHys);
       }
