@@ -260,12 +260,11 @@ void loop() {
   } //End Else If
   
   //Code for moving torch based on tip value compared to requested value, add outputs here.
-  if(TorchVal < (TargetVal - TargetHys) && TorchVal >= minVolt && thcStatus){ //Voltage too low, raise torch
-    //Turn Down off, Up on
-    digitalWrite(10, LOW);       
-    digitalWrite(9, HIGH);       
-    //Print Square
-    if(tUp != 1) { //Test if square has already been printed
+  if(TorchVal < (TargetVal - TargetHys) && TorchVal >= minVolt && thcStatus){ //Voltage too low, raise torch     
+    if(tUp != 1) { //Test if output has already been set
+      //Turn Down off, Up on
+      digitalWrite(10, LOW);       
+      digitalWrite(9, HIGH);  
       tUp = 1; 
       tDown = 0; 
       tOff = 0; 
@@ -279,11 +278,10 @@ void loop() {
     } //End If
   } //End If
   else if(TorchVal > (TargetVal + TargetHys) && TorchVal <= maxVolt && thcStatus){ //Voltage too high, lower torch
-    //Turn Up off, Down on
-    digitalWrite(9, LOW);       
-    digitalWrite(10, HIGH); 
-    //Print Square
-    if(tDown != 1) { //Test if square has already been printed
+    if(tDown != 1) { //Test if output has already been set
+      //Turn Up off, Down on
+      digitalWrite(9, LOW);       
+      digitalWrite(10, HIGH); 
       tUp = 0; 
       tDown = 1; 
       tOff = 0; 
@@ -297,11 +295,10 @@ void loop() {
     } //End If
   } //End Else If
   else { //Voltage Stable - Outputs Off
-    //Turn both outputs off
-    digitalWrite(10, LOW);       
-    digitalWrite(9, LOW); 
-    //Print Square
-    if(tOff != 1) { //Test if square has already been printed
+    if(tOff != 1) { //Test if output has already been set
+      //Turn both outputs off
+      digitalWrite(10, LOW);       
+      digitalWrite(9, LOW); 
       tUp = 0; 
       tDown = 0; 
       tOff = 1; 
